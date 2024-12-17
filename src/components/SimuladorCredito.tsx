@@ -19,8 +19,8 @@ const SimuladorCredito: React.FC = () => {
     { categoria: 'Empresas de energia solar', semRestricao: 3.85, comRestricao: 3.85 },
   ];
 
-  const [loanAmount, setLoanAmount] = useState<string>('1000');
-  const [payments, setPayments] = useState<number>(12);
+  const [loanAmount, setLoanAmount] = useState<string>('');
+  const [payments, setPayments] = useState<number>(1);
   const [selectedCategoria, setSelectedCategoria] = useState<string>(taxas[0].categoria);
   const [restrictionType, setRestrictionType] = useState<'semRestricao' | 'comRestricao'>('semRestricao');
 
@@ -91,6 +91,8 @@ const SimuladorCredito: React.FC = () => {
               maxWidth: '170px',
               fontSize: '1em',
               marginBottom: '10px',
+              marginTop: '5px',
+              borderRadius: '5px',
             }}
           />
             <style>
