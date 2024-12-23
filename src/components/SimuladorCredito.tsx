@@ -20,26 +20,75 @@ const SimuladorCredito: React.FC = () => {
   ];
 
   const [loanAmount, setLoanAmount] = useState<string>('');
+  const [installmentValue, setInstallmentValue] = useState<string>('');
   const [payments, setPayments] = useState<number>(1);
   const [selectedCategoria, setSelectedCategoria] = useState<string>(taxas[0].categoria);
   const [restrictionType, setRestrictionType] = useState<'semRestricao' | 'comRestricao'>('semRestricao');
+  const [startDate, setStartDate] = useState<string>('');
+  const [viewType, setViewType] = useState<'grafico' | 'tabela'>('grafico');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
   const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] : 0;
 
-  const monthlyPayment = ((Number(loanAmount) / payments) * (1 + interestRate / 100)).toFixed(2);
+  const handleLoanAmountChange = (value: string) => {
+    if (installmentValue) {
+      setErrorMessage('Preencha apenas um dos campos: Valor do Empréstimo ou Valor da Prestação.');
+    } else {
+      setLoanAmount(value);
+      setErrorMessage('');
+    }
+  };
+
+  const handleInstallmentValueChange = (value: string) => {
+    if (loanAmount) {
+      setErrorMessage('Preencha apenas um dos campos: Valor do Empréstimo ou Valor da Prestação.');
+    } else {
+      setInstallmentValue(value);
+      setErrorMessage('');
+    }
+  };
+
+  const monthlyPayment = installmentValue
+    ? parseFloat(installmentValue).toFixed(2)
+    : ((Number(loanAmount) / payments) * (1 + interestRate / 100)).toFixed(2);
+
+  const totalAmount = installmentValue
+    ? (Number(installmentValue) * payments * (1 + interestRate / 100)).toFixed(2)
+    : Number(loanAmount).toFixed(2);
+
+  const generateDates = () => {
+    const start = startDate ? new Date(startDate) : new Date();
+    const dates = [];
+    for (let i = 0; i < payments; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i * 30);
+      dates.push(date.toLocaleDateString('pt-BR'));
+    }
+    return dates;
+  };
+
+  const paymentDates = generateDates();
 
   const graphData = {
-    labels: Array.from({ length: payments }, (_, i) => `Mês ${i + 1}`),
+    labels: paymentDates,
     datasets: [
       {
         label: 'Juros (R$)',
-        data: Array(payments).fill((Number(loanAmount) / payments) * (interestRate / 100)),
+        data: Array(payments).fill(
+          installmentValue
+            ? Number(installmentValue) * (interestRate / 100)
+            : (Number(loanAmount) / payments) * (interestRate / 100)
+        ),
         backgroundColor: 'green',
       },
       {
         label: 'Valor Total (R$)',
-        data: Array(payments).fill((Number(loanAmount) / payments) * (1 + interestRate / 100)),
+        data: Array(payments).fill(
+          installmentValue
+            ? Number(installmentValue) * (1 + interestRate / 100)
+            : (Number(loanAmount) / payments) * (1 + interestRate / 100)
+        ),
         backgroundColor: 'orange',
       },
     ],
@@ -71,6 +120,19 @@ const SimuladorCredito: React.FC = () => {
       >
         <h1 style={{ marginBottom: '20px', color: '#000000', fontSize: '1.8em' }}>Simulação de Crédito</h1>
 
+        {/* Data da Primeira Parcela */}
+        <div style={{ textAlign: 'left', marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px' }}>
+            <strong>Data da Primeira Parcela:</strong>
+          </label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{ padding: '5px', width: '100%', maxWidth: '200px' }}
+          />
+        </div>
+
         {/* Valor do Empréstimo */}
         <div style={{ textAlign: 'left', marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '5px' }}>
@@ -78,8 +140,8 @@ const SimuladorCredito: React.FC = () => {
           </label>
           <NumericFormat
             value={loanAmount}
-            onValueChange={(values) => setLoanAmount(values.value)}
-            placeholder='Digite o valor do empréstimo'
+            onValueChange={(values) => handleLoanAmountChange(values.value)}
+            placeholder="Digite o valor do empréstimo"
             thousandSeparator="."
             decimalSeparator=","
             prefix="R$ "
@@ -88,22 +150,59 @@ const SimuladorCredito: React.FC = () => {
             style={{
               padding: '5px',
               width: '100%',
-              maxWidth: '170px',
+              maxWidth: '200px',
+              fontSize: '1em',
+              marginBottom: '10px',
+              marginTop: '5px',
+              borderRadius: '5px',
+              
+            }}
+          />
+          <style>
+                {`
+                    input::placeholder {
+                    font-size: 13px;
+                    color: #888;
+                    font-weight: 500;
+                    }
+                `}
+            </style>
+        </div>
+
+        {/* Valor da Prestação */}
+        <div style={{ textAlign: 'left', marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px' }}>
+            <strong>Valor da Prestação (R$):</strong>
+          </label>
+          <NumericFormat
+            value={installmentValue}
+            onValueChange={(values) => handleInstallmentValueChange(values.value)}
+            placeholder="Digite o valor da prestação"
+            thousandSeparator="."
+            decimalSeparator=","
+            prefix="R$ "
+            allowNegative={false}
+            valueIsNumericString
+            style={{
+              padding: '5px',
+              width: '100%',
+              maxWidth: '200px',
               fontSize: '1em',
               marginBottom: '10px',
               marginTop: '5px',
               borderRadius: '5px',
             }}
           />
-            <style>
+          <style>
                 {`
                     input::placeholder {
-                    font-size: 12px;
+                    font-size: 13px;
                     color: #888;
                     font-weight: 500;
                     }
                 `}
             </style>
+          {errorMessage && <p style={{ color: 'red', fontSize: '0.9em' }}>{errorMessage}</p>}
         </div>
 
         {/* Número de Parcelas */}
@@ -182,12 +281,68 @@ const SimuladorCredito: React.FC = () => {
           <strong>Taxa de Juros:</strong> {interestRate}%
         </p>
 
-        {/* Gráfico */}
-        <div style={{ overflowX: 'auto', marginBottom: '20px', height: '250px', }}>
-          <Bar data={graphData} options={{ responsive: true, maintainAspectRatio: false }} />
+        {/* Gráfico ou Tabela */}
+        <div style={{ marginBottom: '15px', textAlign: 'left' }}>
+          <strong>Visualização:</strong>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <label>
+              <input
+                type="radio"
+                value="grafico"
+                checked={viewType === 'grafico'}
+                onChange={() => setViewType('grafico')}
+              />
+              Gráfico
+            </label>
+            <label>
+              <input
+                type="radio"
+                value="tabela"
+                checked={viewType === 'tabela'}
+                onChange={() => setViewType('tabela')}
+              />
+              Tabela
+            </label>
+          </div>
         </div>
 
-        {/* Pagamento Mensal */}
+        {viewType === 'grafico' ? (
+          <div style={{ overflowX: 'auto', marginBottom: '20px', height: '250px' }}>
+            <Bar data={graphData} options={{ responsive: true, maintainAspectRatio: false }} />
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Juros (R$)</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Valor Total (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paymentDates.map((date, i) => (
+                <tr key={i}>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{date}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                    {(
+                      installmentValue
+                        ? Number(installmentValue) * (interestRate / 100)
+                        : (Number(loanAmount) / payments) * (interestRate / 100)
+                    ).toFixed(2)}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                    {(
+                      installmentValue
+                        ? Number(installmentValue) * (1 + interestRate / 100)
+                        : (Number(loanAmount) / payments) * (1 + interestRate / 100)
+                    ).toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
         <div style={{ marginTop: '20px' }}>
           <h2 style={{ fontSize: '1.5em' }}>
             Pagamento Mensal: <strong>R$ {monthlyPayment}</strong>
@@ -195,21 +350,23 @@ const SimuladorCredito: React.FC = () => {
           <p style={{ fontSize: '1em' }}>
             Tempo Total: <strong>{payments} meses</strong>
           </p>
+          <p style={{ fontSize: '1em' }}>
+            Valor Total: <strong>R$ {totalAmount}</strong>
+          </p>
         </div>
 
-        {/* Botão para WhatsApp */}
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
           <a
-            href={`https://wa.me/+5586998337893?text=${encodeURIComponent(
+            href={`https://wa.me/+5586995601916?text=${encodeURIComponent(
               `Olá! Gostaria de saber mais sobre o empréstimo:\n\n` +
-              `- Valor do Empréstimo: R$ ${Number(loanAmount).toLocaleString('pt-BR', {
-                minimumFractionDigits: 2,
-              })}\n` +
-              `- Número de Parcelas: ${payments}\n` +
-              `- Categoria: ${selectedCategoria}\n` +
-              `- Tipo de Restrição: ${restrictionType === 'semRestricao' ? 'Sem Restrição' : 'Com Restrição'}\n` +
-              `- Taxa de Juros: ${interestRate}%\n` +
-              `- Pagamento Mensal: R$ ${monthlyPayment}`
+                `- Valor do Empréstimo: R$ ${Number(loanAmount).toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                })}\n` +
+                `- Número de Parcelas: ${payments}\n` +
+                `- Categoria: ${selectedCategoria}\n` +
+                `- Tipo de Restrição: ${restrictionType === 'semRestricao' ? 'Sem Restrição' : 'Com Restrição'}\n` +
+                `- Taxa de Juros: ${interestRate}%\n` +
+                `- Pagamento Mensal: R$ ${monthlyPayment}`
             )}`}
             target="_blank"
             rel="noopener noreferrer"
