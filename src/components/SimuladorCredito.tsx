@@ -21,44 +21,37 @@ const SimuladorCredito: React.FC = () => {
 
   const [loanAmount, setLoanAmount] = useState<string>('');
   const [installmentValue, setInstallmentValue] = useState<string>('');
-  const [payments, setPayments] = useState<number>(1);
+  const [payments, setPayments] = useState<number>(16);
   const [selectedCategoria, setSelectedCategoria] = useState<string>(taxas[0].categoria);
   const [restrictionType, setRestrictionType] = useState<'semRestricao' | 'comRestricao'>('semRestricao');
   const [startDate, setStartDate] = useState<string>('');
   const [viewType, setViewType] = useState<'grafico' | 'tabela'>('grafico');
-  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
-  const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] : 0;
+  const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] / 100 : 0;
 
-  const handleLoanAmountChange = (value: string) => {
-    if (installmentValue) {
-      setErrorMessage('Preencha apenas um dos campos: Valor do Empréstimo ou Valor da Prestação.');
-    } else {
-      setLoanAmount(value);
-      setErrorMessage('');
+  const calculateInstallmentValue = () => {
+    const PV = Number(loanAmount);
+    const i = interestRate;
+    const n = payments;
+    if (PV > 0 && i > 0 && n > 0) {
+      return (PV * i) / (1 - Math.pow(1 + i, -n));
     }
-  };
-
-  const handleInstallmentValueChange = (value: string) => {
-    if (loanAmount) {
-      setErrorMessage('Preencha apenas um dos campos: Valor do Empréstimo ou Valor da Prestação.');
-    } else {
-      setInstallmentValue(value);
-      setErrorMessage('');
-    }
+    return 0;
   };
 
   const monthlyPayment = installmentValue
-    ? parseFloat(installmentValue).toFixed(2)
-    : ((Number(loanAmount) / payments) * (1 + interestRate / 100)).toFixed(2);
+    ? Number(installmentValue)
+    : calculateInstallmentValue();
 
-  const totalAmount = installmentValue
-    ? (Number(installmentValue) * payments * (1 + interestRate / 100)).toFixed(2)
-    : Number(loanAmount).toFixed(2);
+  const totalPaid = monthlyPayment * payments;
+  const totalInterest = totalPaid - Number(loanAmount);
 
   const generateDates = () => {
     const start = startDate ? new Date(startDate) : new Date();
+    if (!startDate) {
+      start.setDate(start.getDate() + 30);
+    }
     const dates = [];
     for (let i = 0; i < payments; i++) {
       const date = new Date(start);
@@ -75,20 +68,12 @@ const SimuladorCredito: React.FC = () => {
     datasets: [
       {
         label: 'Juros (R$)',
-        data: Array(payments).fill(
-          installmentValue
-            ? Number(installmentValue) * (interestRate / 100)
-            : (Number(loanAmount) / payments) * (interestRate / 100)
-        ),
+        data: Array(payments).fill(totalInterest / payments),
         backgroundColor: 'green',
       },
       {
         label: 'Valor Total (R$)',
-        data: Array(payments).fill(
-          installmentValue
-            ? Number(installmentValue) * (1 + interestRate / 100)
-            : (Number(loanAmount) / payments) * (1 + interestRate / 100)
-        ),
+        data: Array(payments).fill(monthlyPayment),
         backgroundColor: 'orange',
       },
     ],
@@ -140,7 +125,7 @@ const SimuladorCredito: React.FC = () => {
           </label>
           <NumericFormat
             value={loanAmount}
-            onValueChange={(values) => handleLoanAmountChange(values.value)}
+            onValueChange={(values) => setLoanAmount(values.value)}
             placeholder="Digite o valor do empréstimo"
             thousandSeparator="."
             decimalSeparator=","
@@ -155,18 +140,8 @@ const SimuladorCredito: React.FC = () => {
               marginBottom: '10px',
               marginTop: '5px',
               borderRadius: '5px',
-              
             }}
           />
-          <style>
-                {`
-                    input::placeholder {
-                    font-size: 13px;
-                    color: #888;
-                    font-weight: 500;
-                    }
-                `}
-            </style>
         </div>
 
         {/* Valor da Prestação */}
@@ -176,7 +151,7 @@ const SimuladorCredito: React.FC = () => {
           </label>
           <NumericFormat
             value={installmentValue}
-            onValueChange={(values) => handleInstallmentValueChange(values.value)}
+            onValueChange={(values) => setInstallmentValue(values.value)}
             placeholder="Digite o valor da prestação"
             thousandSeparator="."
             decimalSeparator=","
@@ -193,16 +168,6 @@ const SimuladorCredito: React.FC = () => {
               borderRadius: '5px',
             }}
           />
-          <style>
-                {`
-                    input::placeholder {
-                    font-size: 13px;
-                    color: #888;
-                    font-weight: 500;
-                    }
-                `}
-            </style>
-          {errorMessage && <p style={{ color: 'red', fontSize: '0.9em' }}>{errorMessage}</p>}
         </div>
 
         {/* Número de Parcelas */}
@@ -278,7 +243,7 @@ const SimuladorCredito: React.FC = () => {
 
         {/* Taxa Atual */}
         <p style={{ textAlign: 'left', marginBottom: '20px', fontSize: '1em' }}>
-          <strong>Taxa de Juros:</strong> {interestRate}%
+          <strong>Taxa de Juros:</strong> {(interestRate * 100).toFixed(2)}%
         </p>
 
         {/* Gráfico ou Tabela */}
@@ -324,18 +289,10 @@ const SimuladorCredito: React.FC = () => {
                 <tr key={i}>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>{date}</td>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    {(
-                      installmentValue
-                        ? Number(installmentValue) * (interestRate / 100)
-                        : (Number(loanAmount) / payments) * (interestRate / 100)
-                    ).toFixed(2)}
+                    {(totalInterest / payments).toFixed(2)}
                   </td>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    {(
-                      installmentValue
-                        ? Number(installmentValue) * (1 + interestRate / 100)
-                        : (Number(loanAmount) / payments) * (1 + interestRate / 100)
-                    ).toFixed(2)}
+                    {monthlyPayment.toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -345,16 +302,20 @@ const SimuladorCredito: React.FC = () => {
 
         <div style={{ marginTop: '20px' }}>
           <h2 style={{ fontSize: '1.5em' }}>
-            Pagamento Mensal: <strong>R$ {monthlyPayment}</strong>
+            Pagamento Mensal: <strong>R$ {monthlyPayment.toFixed(2)}</strong>
           </h2>
           <p style={{ fontSize: '1em' }}>
             Tempo Total: <strong>{payments} meses</strong>
           </p>
           <p style={{ fontSize: '1em' }}>
-            Valor Total: <strong>R$ {totalAmount}</strong>
+            Valor Total: <strong>R$ {totalPaid.toFixed(2)}</strong>
+          </p>
+          <p style={{ fontSize: '1em', color: 'green' }}>
+            Juros Totais: <strong>R$ {totalInterest.toFixed(2)}</strong>
           </p>
         </div>
 
+        {/* Botão do WhatsApp */}
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
           <a
             href={`https://wa.me/+5586995601916?text=${encodeURIComponent(
@@ -365,8 +326,9 @@ const SimuladorCredito: React.FC = () => {
                 `- Número de Parcelas: ${payments}\n` +
                 `- Categoria: ${selectedCategoria}\n` +
                 `- Tipo de Restrição: ${restrictionType === 'semRestricao' ? 'Sem Restrição' : 'Com Restrição'}\n` +
-                `- Taxa de Juros: ${interestRate}%\n` +
-                `- Pagamento Mensal: R$ ${monthlyPayment}`
+                `- Taxa de Juros: ${(interestRate * 100).toFixed(2)}%\n` +
+                `- Pagamento Mensal: R$ ${monthlyPayment.toFixed(2)}\n` +
+                `- Juros Totais: R$ ${totalInterest.toFixed(2)}`
             )}`}
             target="_blank"
             rel="noopener noreferrer"
