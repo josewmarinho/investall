@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { NumericFormat } from 'react-number-format';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface Taxa {
   categoria: string;
@@ -21,63 +17,133 @@ const SimuladorCredito: React.FC = () => {
 
   const [loanAmount, setLoanAmount] = useState<string>('');
   const [installmentValue, setInstallmentValue] = useState<string>('');
-  const [payments, setPayments] = useState<number>(16);
+  const [payments, setPayments] = useState<number>(1);
   const [selectedCategoria, setSelectedCategoria] = useState<string>(taxas[0].categoria);
   const [restrictionType, setRestrictionType] = useState<'semRestricao' | 'comRestricao'>('semRestricao');
-  const [startDate, setStartDate] = useState<string>('');
-  const [viewType, setViewType] = useState<'grafico' | 'tabela'>('grafico');
+  const [startDate, setStartDate] = useState<string>(() => {
+    const defaultStartDate = new Date();
+    defaultStartDate.setDate(defaultStartDate.getDate() + 30);
+    return defaultStartDate.toISOString().split('T')[0];
+  });
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
-  const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] / 100 : 0;
-
-  const calculateInstallmentValue = () => {
-    const PV = Number(loanAmount);
-    const i = interestRate;
-    const n = payments;
+  const calculateInstallmentValue = (PV: number, i: number, n: number) => {
     if (PV > 0 && i > 0 && n > 0) {
-      return (PV * i) / (1 - Math.pow(1 + i, -n));
+      return (PV * i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
     }
     return 0;
   };
 
-  const monthlyPayment = installmentValue
-    ? Number(installmentValue)
-    : calculateInstallmentValue();
+  const calculateLoanAmount = (PMT: number, i: number, n: number) => {
+    if (PMT > 0 && i > 0 && n > 0) {
+      return (PMT * (Math.pow(1 + i, n) - 1)) / (i * Math.pow(1 + i, n));
+    }
+    return 0;
+  };
 
-  const totalPaid = monthlyPayment * payments;
+  const calculateGracePeriod = () => {
+    const today = new Date();
+    const [year, month, day] = startDate.split('-').map(Number);
+    const adjustedDate = new Date(year, month - 2, day); // Subtrai 1 mês para efeito de cálculo
+
+    const diffInMonths = Math.round(
+      (adjustedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30)
+    );
+    return Math.max(diffInMonths, 0);
+  };
+
+  const handleCalculate = () => {
+    setErrorMessage('');
+
+    const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
+    const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] / 100 : 0;
+
+    const gracePeriod = calculateGracePeriod();
+
+    if (loanAmount && installmentValue) {
+      setErrorMessage('Por favor, preencha apenas um dos campos: Valor do Empréstimo ou Valor da Prestação.');
+      return;
+    }
+
+    let saldoDevedor = Number(loanAmount);
+
+    if (gracePeriod > 0 && saldoDevedor > 0) {
+      const jurosCarencia = saldoDevedor * (Math.pow(1 + interestRate, gracePeriod) - 1);
+      saldoDevedor += jurosCarencia;
+    }
+
+    if (loanAmount) {
+      const PV = saldoDevedor;
+      const installment = calculateInstallmentValue(PV, interestRate, payments);
+      setInstallmentValue(installment.toFixed(2));
+    } else if (installmentValue) {
+      const PMT = Number(installmentValue);
+      const loan = calculateLoanAmount(PMT, interestRate, payments);
+      setLoanAmount(loan.toFixed(2));
+    } else {
+      setErrorMessage('Por favor, preencha um dos campos para calcular.');
+    }
+  };
+
+  const handleClear = () => {
+    setLoanAmount('');
+    setInstallmentValue('');
+    setErrorMessage('');
+  };
+
+  const generateAmortizationTable = () => {
+    const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
+    const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] / 100 : 0;
+  
+    const gracePeriod = calculateGracePeriod();
+    let saldoDevedor = Number(loanAmount);
+  
+    if (gracePeriod > 0 && saldoDevedor > 0) {
+      const jurosCarencia = saldoDevedor * (Math.pow(1 + interestRate, gracePeriod) - 1);
+      saldoDevedor += jurosCarencia;
+    }
+  
+    const table = [];
+    const parcelaFixa = calculateInstallmentValue(saldoDevedor, interestRate, payments);
+  
+    for (let i = 0; i < payments; i++) {
+      const juros = saldoDevedor * interestRate;
+      const amortizacao = parcelaFixa - juros;
+      saldoDevedor -= amortizacao;
+  
+      // Ajusta o saldo devedor para zero se ele estiver muito próximo de zero
+      if (saldoDevedor < 0.01) {
+        saldoDevedor = 0;
+      }
+  
+      table.push({
+        parcela: i + 1,
+        juros: juros.toFixed(2),
+        amortizacao: amortizacao.toFixed(2),
+        saldoDevedor: saldoDevedor.toFixed(2),
+      });
+    }
+  
+    return table;
+  };
+  
+  const amortizationTable = generateAmortizationTable();
+  const totalPaid = Number(installmentValue) * payments;
   const totalInterest = totalPaid - Number(loanAmount);
 
   const generateDates = () => {
-    const start = startDate ? new Date(startDate) : new Date();
-    if (!startDate) {
-      start.setDate(start.getDate() + 30);
-    }
+    const [year, month, day] = startDate.split('-').map(Number);
+    const displayDate = new Date(year, month - 1, day); // Data mostrada na tabela é a inserida pelo usuário
+
     const dates = [];
     for (let i = 0; i < payments; i++) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + i * 30);
+      const date = new Date(displayDate.getFullYear(), displayDate.getMonth() + i, displayDate.getDate());
       dates.push(date.toLocaleDateString('pt-BR'));
     }
     return dates;
   };
 
   const paymentDates = generateDates();
-
-  const graphData = {
-    labels: paymentDates,
-    datasets: [
-      {
-        label: 'Juros (R$)',
-        data: Array(payments).fill(totalInterest / payments),
-        backgroundColor: 'green',
-      },
-      {
-        label: 'Valor Total (R$)',
-        data: Array(payments).fill(monthlyPayment),
-        backgroundColor: 'orange',
-      },
-    ],
-  };
 
   return (
     <div
@@ -100,7 +166,6 @@ const SimuladorCredito: React.FC = () => {
           padding: '20px',
           borderRadius: '10px',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          boxSizing: 'border-box',
         }}
       >
         <h1 style={{ marginBottom: '20px', color: '#000000', fontSize: '1.8em' }}>Simulação de Crédito</h1>
@@ -126,9 +191,9 @@ const SimuladorCredito: React.FC = () => {
           <NumericFormat
             value={loanAmount}
             onValueChange={(values) => setLoanAmount(values.value)}
-            placeholder="Digite o valor do empréstimo"
+            placeholder="Valor do empréstimo"
             thousandSeparator="."
-            decimalSeparator=","
+            decimalSeparator="," 
             prefix="R$ "
             allowNegative={false}
             valueIsNumericString
@@ -152,9 +217,9 @@ const SimuladorCredito: React.FC = () => {
           <NumericFormat
             value={installmentValue}
             onValueChange={(values) => setInstallmentValue(values.value)}
-            placeholder="Digite o valor da prestação"
+            placeholder="Valor da prestação"
             thousandSeparator="."
-            decimalSeparator=","
+            decimalSeparator="," 
             prefix="R$ "
             allowNegative={false}
             valueIsNumericString
@@ -243,108 +308,76 @@ const SimuladorCredito: React.FC = () => {
 
         {/* Taxa Atual */}
         <p style={{ textAlign: 'left', marginBottom: '20px', fontSize: '1em' }}>
-          <strong>Taxa de Juros:</strong> {(interestRate * 100).toFixed(2)}%
+          <strong>Taxa de Juros:</strong> {(taxas.find((taxa) => taxa.categoria === selectedCategoria)?.[restrictionType] ?? 0).toFixed(2)}%
         </p>
 
-        {/* Gráfico ou Tabela */}
-        <div style={{ marginBottom: '15px', textAlign: 'left' }}>
-          <strong>Visualização:</strong>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <label>
-              <input
-                type="radio"
-                value="grafico"
-                checked={viewType === 'grafico'}
-                onChange={() => setViewType('grafico')}
-              />
-              Gráfico
-            </label>
-            <label>
-              <input
-                type="radio"
-                value="tabela"
-                checked={viewType === 'tabela'}
-                onChange={() => setViewType('tabela')}
-              />
-              Tabela
-            </label>
-          </div>
+        {/* Botões */}
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <button
+            onClick={handleCalculate}
+            style={{
+              padding: '10px 20px',
+              fontSize: '1em',
+              backgroundColor: '#007BFF',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              marginRight: '10px',
+            }}
+          >
+            Calcular
+          </button>
+          <button
+            onClick={handleClear}
+            style={{
+              padding: '10px 27px',
+              fontSize: '1em',
+              backgroundColor: '#DC3545',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            Limpar
+          </button>
+          {errorMessage && (
+            <p style={{ color: 'red', marginTop: '10px' }}>{errorMessage}</p>
+          )}
         </div>
 
-        {viewType === 'grafico' ? (
-          <div style={{ overflowX: 'auto', marginBottom: '20px', height: '250px' }}>
-            <Bar data={graphData} options={{ responsive: true, maintainAspectRatio: false }} />
-          </div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-            <thead>
-              <tr>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Juros (R$)</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Valor Total (R$)</th>
+        {/* Tabela de Amortização */}
+        <h2 style={{ margin: '20px 0' }}>Tabela de Amortização</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+          <thead>
+            <tr>
+              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Parcela</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Juros (R$)</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Amortização (R$)</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Saldo Devedor (R$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {amortizationTable.map((row, index) => (
+              <tr key={index}>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.parcela}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{paymentDates[index]}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.juros}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.amortizacao}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.saldoDevedor}</td>
               </tr>
-            </thead>
-            <tbody>
-              {paymentDates.map((date, i) => (
-                <tr key={i}>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{date}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    {(totalInterest / payments).toFixed(2)}
-                  </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    {monthlyPayment.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
 
         <div style={{ marginTop: '20px' }}>
           <h2 style={{ fontSize: '1.5em' }}>
-            Pagamento Mensal: <strong>R$ {monthlyPayment.toFixed(2)}</strong>
+            Pagamento Mensal: <strong>R$ {Number(installmentValue).toFixed(2)}</strong>
           </h2>
-          <p style={{ fontSize: '1em' }}>
-            Tempo Total: <strong>{payments} meses</strong>
-          </p>
-          <p style={{ fontSize: '1em' }}>
-            Valor Total: <strong>R$ {totalPaid.toFixed(2)}</strong>
-          </p>
-          <p style={{ fontSize: '1em', color: 'green' }}>
-            Juros Totais: <strong>R$ {totalInterest.toFixed(2)}</strong>
-          </p>
-        </div>
-
-        {/* Botão do WhatsApp */}
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <a
-            href={`https://wa.me/+5586995601916?text=${encodeURIComponent(
-              `Olá! Gostaria de saber mais sobre o empréstimo:\n\n` +
-                `- Valor do Empréstimo: R$ ${Number(loanAmount).toLocaleString('pt-BR', {
-                  minimumFractionDigits: 2,
-                })}\n` +
-                `- Número de Parcelas: ${payments}\n` +
-                `- Categoria: ${selectedCategoria}\n` +
-                `- Tipo de Restrição: ${restrictionType === 'semRestricao' ? 'Sem Restrição' : 'Com Restrição'}\n` +
-                `- Taxa de Juros: ${(interestRate * 100).toFixed(2)}%\n` +
-                `- Pagamento Mensal: R$ ${monthlyPayment.toFixed(2)}\n` +
-                `- Juros Totais: R$ ${totalInterest.toFixed(2)}`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-block',
-              padding: '10px 20px',
-              backgroundColor: '#25D366',
-              color: '#fff',
-              textDecoration: 'none',
-              borderRadius: '5px',
-              fontSize: '1.2em',
-              fontWeight: 'bold',
-            }}
-          >
-            Chamar no WhatsApp
-          </a>
+          <p>Tempo Total: <strong>{payments} meses</strong></p>
+          <p style={{ color: 'green' }}>Juros Totais: <strong>R$ {totalInterest.toFixed(2)}</strong></p>
         </div>
       </div>
     </div>
