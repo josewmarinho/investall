@@ -20,11 +20,13 @@ const SimuladorCredito: React.FC = () => {
   const [payments, setPayments] = useState<number>(1);
   const [selectedCategoria, setSelectedCategoria] = useState<string>(taxas[0].categoria);
   const [restrictionType, setRestrictionType] = useState<'semRestricao' | 'comRestricao'>('semRestricao');
+
   const [startDate, setStartDate] = useState<string>(() => {
-    const defaultStartDate = new Date();
-    defaultStartDate.setDate(defaultStartDate.getDate() + 30);
-    return defaultStartDate.toISOString().split('T')[0];
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+    return nextMonth.toISOString().split('T')[0];
   });
+  
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const calculateInstallmentValue = (PV: number, i: number, n: number) => {
