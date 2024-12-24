@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { NumericFormat } from 'react-number-format';
-import { numeroPorExtenso } from '../utils/numeroPorExtenso';
+import React, { useState } from "react";
+import { NumericFormat } from "react-number-format";
+import { numeroPorExtenso } from "../utils/numeroPorExtenso";
 
 interface Taxa {
   categoria: string;
@@ -10,25 +10,49 @@ interface Taxa {
 
 const SimuladorCredito: React.FC = () => {
   const taxas: Taxa[] = [
-    { categoria: 'Funcionários de condomínios', semRestricao: 6.68, comRestricao: 7.68 },
-    { categoria: 'Administradoras e Síndicos profissionais', semRestricao: 7.56, comRestricao: 8.56 },
-    { categoria: 'Empresas - antecipação de boletos', semRestricao: 9.86, comRestricao: 10.86 },
-    { categoria: 'Empresas de energia solar', semRestricao: 3.85, comRestricao: 3.85 },
+    {
+      categoria: "Funcionários de condomínios",
+      semRestricao: 6.68,
+      comRestricao: 7.68,
+    },
+    {
+      categoria: "Administradoras e Síndicos profissionais",
+      semRestricao: 7.56,
+      comRestricao: 8.56,
+    },
+    {
+      categoria: "Empresas - antecipação de boletos",
+      semRestricao: 9.86,
+      comRestricao: 10.86,
+    },
+    {
+      categoria: "Empresas de energia solar",
+      semRestricao: 3.85,
+      comRestricao: 3.85,
+    },
   ];
 
-  const [loanAmount, setLoanAmount] = useState<string>('');
-  const [installmentValue, setInstallmentValue] = useState<string>('');
+  const [loanAmount, setLoanAmount] = useState<string>("");
+  const [installmentValue, setInstallmentValue] = useState<string>("");
   const [payments, setPayments] = useState<number>(1);
-  const [selectedCategoria, setSelectedCategoria] = useState<string>(taxas[0].categoria);
-  const [restrictionType, setRestrictionType] = useState<'semRestricao' | 'comRestricao'>('semRestricao');
+  const [selectedCategoria, setSelectedCategoria] = useState<string>(
+    taxas[0].categoria
+  );
+  const [restrictionType, setRestrictionType] = useState<
+    "semRestricao" | "comRestricao"
+  >("semRestricao");
 
   const [startDate, setStartDate] = useState<string>(() => {
     const today = new Date();
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
-    return nextMonth.toISOString().split('T')[0];
+    const nextMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      today.getDate()
+    );
+    return nextMonth.toISOString().split("T")[0];
   });
 
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [calculationDone, setCalculationDone] = useState<boolean>(false);
 
   const calculateInstallmentValue = (PV: number, i: number, n: number) => {
@@ -47,7 +71,7 @@ const SimuladorCredito: React.FC = () => {
 
   const calculateGracePeriod = () => {
     const today = new Date();
-    const [year, month, day] = startDate.split('-').map(Number);
+    const [year, month, day] = startDate.split("-").map(Number);
     const adjustedDate = new Date(year, month - 2, day);
 
     const diffInMonths = Math.round(
@@ -57,22 +81,29 @@ const SimuladorCredito: React.FC = () => {
   };
 
   const handleCalculate = () => {
-    setErrorMessage('');
+    setErrorMessage("");
 
-    const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
-    const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] / 100 : 0;
+    const taxaSelecionada = taxas.find(
+      (taxa) => taxa.categoria === selectedCategoria
+    );
+    const interestRate = taxaSelecionada
+      ? taxaSelecionada[restrictionType] / 100
+      : 0;
 
     const gracePeriod = calculateGracePeriod();
 
     if (loanAmount && installmentValue) {
-      setErrorMessage('Por favor, preencha apenas um dos campos: Valor do Empréstimo ou Valor da Prestação.');
+      setErrorMessage(
+        "Por favor, preencha apenas um dos campos: Valor do Empréstimo ou Valor da Prestação."
+      );
       return;
     }
 
     let saldoDevedor = Number(loanAmount);
 
     if (gracePeriod > 0 && saldoDevedor > 0) {
-      const jurosCarencia = saldoDevedor * (Math.pow(1 + interestRate, gracePeriod) - 1);
+      const jurosCarencia =
+        saldoDevedor * (Math.pow(1 + interestRate, gracePeriod) - 1);
       saldoDevedor += jurosCarencia;
     }
 
@@ -85,34 +116,43 @@ const SimuladorCredito: React.FC = () => {
       const loan = calculateLoanAmount(PMT, interestRate, payments);
       setLoanAmount(loan.toFixed(2));
     } else {
-      setErrorMessage('Por favor, preencha um dos campos para calcular.');
+      setErrorMessage("Por favor, preencha um dos campos para calcular.");
     }
 
     setCalculationDone(true);
   };
 
   const handleClear = () => {
-    setLoanAmount('');
-    setInstallmentValue('');
-    setErrorMessage('');
+    setLoanAmount("");
+    setInstallmentValue("");
+    setErrorMessage("");
     setPayments(1);
     setCalculationDone(false);
   };
 
   const generateAmortizationTable = () => {
-    const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
-    const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] / 100 : 0;
+    const taxaSelecionada = taxas.find(
+      (taxa) => taxa.categoria === selectedCategoria
+    );
+    const interestRate = taxaSelecionada
+      ? taxaSelecionada[restrictionType] / 100
+      : 0;
 
     const gracePeriod = calculateGracePeriod();
     let saldoDevedor = Number(loanAmount);
 
     if (gracePeriod > 0 && saldoDevedor > 0) {
-      const jurosCarencia = saldoDevedor * (Math.pow(1 + interestRate, gracePeriod) - 1);
+      const jurosCarencia =
+        saldoDevedor * (Math.pow(1 + interestRate, gracePeriod) - 1);
       saldoDevedor += jurosCarencia;
     }
 
     const table = [];
-    const parcelaFixa = calculateInstallmentValue(saldoDevedor, interestRate, payments);
+    const parcelaFixa = calculateInstallmentValue(
+      saldoDevedor,
+      interestRate,
+      payments
+    );
 
     for (let i = 0; i < payments; i++) {
       const juros = saldoDevedor * interestRate;
@@ -139,13 +179,17 @@ const SimuladorCredito: React.FC = () => {
   const totalInterest = totalPaid - Number(loanAmount);
 
   const generateDates = () => {
-    const [year, month, day] = startDate.split('-').map(Number);
+    const [year, month, day] = startDate.split("-").map(Number);
     const displayDate = new Date(year, month - 1, day);
 
     const dates = [];
     for (let i = 0; i < payments; i++) {
-      const date = new Date(displayDate.getFullYear(), displayDate.getMonth() + i, displayDate.getDate());
-      dates.push(date.toLocaleDateString('pt-BR'));
+      const date = new Date(
+        displayDate.getFullYear(),
+        displayDate.getMonth() + i,
+        displayDate.getDate()
+      );
+      dates.push(date.toLocaleDateString("pt-BR"));
     }
     return dates;
   };
@@ -153,53 +197,59 @@ const SimuladorCredito: React.FC = () => {
   const paymentDates = generateDates();
 
   const numberToWords = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
   };
 
   return (
     <div
       style={{
-        background: 'linear-gradient(to bottom, #e6f7ff, #b3e0ff)',
-        minHeight: '100vh',
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '10px',
+        background: "linear-gradient(to bottom, #e6f7ff, #b3e0ff)",
+        minHeight: "100vh",
+        width: "100%",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "10px",
       }}
     >
       <div
         style={{
-          width: '100%',
-          maxWidth: '800px',
-          textAlign: 'center',
-          background: '#fff',
-          padding: '20px',
-          borderRadius: '10px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          marginBottom: '100px',
-          marginTop: '30px',
-
+          width: "100%",
+          maxWidth: "800px",
+          textAlign: "center",
+          background: "#fff",
+          padding: "20px",
+          borderRadius: "10px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+          marginBottom: "100px",
+          marginTop: "30px",
         }}
       >
-        <h1 style={{ marginBottom: '20px', color: '#000000', fontSize: '1.8em' }}>Simulação de Crédito</h1>
+        <h1
+          style={{ marginBottom: "20px", color: "#000000", fontSize: "1.8em" }}
+        >
+          Simulação de Crédito
+        </h1>
 
         {/* Data da Primeira Parcela */}
-        <div style={{ textAlign: 'left', marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>
+        <div style={{ textAlign: "left", marginBottom: "15px" }}>
+          <label style={{ display: "block", marginBottom: "5px" }}>
             <strong>Data da Primeira Parcela:</strong>
           </label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            style={{ padding: '5px', width: '100%', maxWidth: '200px' }}
+            style={{ padding: "5px", width: "100%", maxWidth: "200px" }}
           />
         </div>
 
         {/* Valor do Empréstimo */}
-        <div style={{ textAlign: 'left', marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>
+        <div style={{ textAlign: "left", marginBottom: "15px" }}>
+          <label style={{ display: "block", marginBottom: "5px" }}>
             <strong>Valor do Empréstimo (R$):</strong>
           </label>
           <NumericFormat
@@ -207,25 +257,25 @@ const SimuladorCredito: React.FC = () => {
             onValueChange={(values) => setLoanAmount(values.value)}
             placeholder="Valor do empréstimo"
             thousandSeparator="."
-            decimalSeparator="," 
+            decimalSeparator=","
             prefix="R$ "
             allowNegative={false}
             valueIsNumericString
             style={{
-              padding: '5px',
-              width: '100%',
-              maxWidth: '200px',
-              fontSize: '1em',
-              marginBottom: '10px',
-              marginTop: '5px',
-              borderRadius: '5px',
+              padding: "5px",
+              width: "100%",
+              maxWidth: "200px",
+              fontSize: "1em",
+              marginBottom: "10px",
+              marginTop: "5px",
+              borderRadius: "5px",
             }}
           />
         </div>
 
         {/* Valor da Prestação */}
-        <div style={{ textAlign: 'left', marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>
+        <div style={{ textAlign: "left", marginBottom: "15px" }}>
+          <label style={{ display: "block", marginBottom: "5px" }}>
             <strong>Valor da Prestação (R$):</strong>
           </label>
           <NumericFormat
@@ -233,25 +283,25 @@ const SimuladorCredito: React.FC = () => {
             onValueChange={(values) => setInstallmentValue(values.value)}
             placeholder="Valor da prestação"
             thousandSeparator="."
-            decimalSeparator="," 
+            decimalSeparator=","
             prefix="R$ "
             allowNegative={false}
             valueIsNumericString
             style={{
-              padding: '5px',
-              width: '100%',
-              maxWidth: '200px',
-              fontSize: '1em',
-              marginBottom: '10px',
-              marginTop: '5px',
-              borderRadius: '5px',
+              padding: "5px",
+              width: "100%",
+              maxWidth: "200px",
+              fontSize: "1em",
+              marginBottom: "10px",
+              marginTop: "5px",
+              borderRadius: "5px",
             }}
           />
         </div>
 
         {/* Número de Parcelas */}
-        <div style={{ textAlign: 'left', marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>
+        <div style={{ textAlign: "left", marginBottom: "15px" }}>
+          <label style={{ display: "block", marginBottom: "5px" }}>
             <strong>Número de Parcelas: {payments}</strong>
           </label>
           <input
@@ -261,24 +311,29 @@ const SimuladorCredito: React.FC = () => {
             value={payments}
             onChange={(e) => setPayments(Number(e.target.value))}
             style={{
-              width: '100%',
-              height: '10px',
-              background: 'linear-gradient(to right, #61b3ff, #cceeff)',
-              borderRadius: '5px',
-              outline: 'none',
+              width: "100%",
+              height: "10px",
+              background: "linear-gradient(to right, #61b3ff, #cceeff)",
+              borderRadius: "5px",
+              outline: "none",
             }}
           />
         </div>
 
         {/* Categoria */}
-        <div style={{ textAlign: 'left', marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>
+        <div style={{ textAlign: "left", marginBottom: "15px" }}>
+          <label style={{ display: "block", marginBottom: "5px" }}>
             <strong>Categoria:</strong>
           </label>
           <select
             value={selectedCategoria}
             onChange={(e) => setSelectedCategoria(e.target.value)}
-            style={{ padding: '5px', width: '100%', marginTop: '1px', maxWidth: '300px' }}
+            style={{
+              padding: "5px",
+              width: "100%",
+              marginTop: "1px",
+              maxWidth: "300px",
+            }}
           >
             {taxas.map((taxa) => (
               <option key={taxa.categoria} value={taxa.categoria}>
@@ -289,22 +344,22 @@ const SimuladorCredito: React.FC = () => {
         </div>
 
         {/* Tipo de Restrição */}
-        <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+        <div style={{ textAlign: "left", marginBottom: "20px" }}>
           <strong>Tipo de Restrição:</strong>
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              marginTop: '10px',
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              marginTop: "10px",
             }}
           >
             <label>
               <input
                 type="radio"
                 value="semRestricao"
-                checked={restrictionType === 'semRestricao'}
-                onChange={() => setRestrictionType('semRestricao')}
+                checked={restrictionType === "semRestricao"}
+                onChange={() => setRestrictionType("semRestricao")}
               />
               Sem Restrição
             </label>
@@ -312,8 +367,8 @@ const SimuladorCredito: React.FC = () => {
               <input
                 type="radio"
                 value="comRestricao"
-                checked={restrictionType === 'comRestricao'}
-                onChange={() => setRestrictionType('comRestricao')}
+                checked={restrictionType === "comRestricao"}
+                onChange={() => setRestrictionType("comRestricao")}
               />
               Com Restrição
             </label>
@@ -321,23 +376,29 @@ const SimuladorCredito: React.FC = () => {
         </div>
 
         {/* Taxa Atual */}
-        <p style={{ textAlign: 'left', marginBottom: '20px', fontSize: '1em' }}>
-          <strong>Taxa de Juros:</strong> {(taxas.find((taxa) => taxa.categoria === selectedCategoria)?.[restrictionType] ?? 0).toFixed(2)}%
+        <p style={{ textAlign: "left", marginBottom: "20px", fontSize: "1em" }}>
+          <strong>Taxa de Juros:</strong>{" "}
+          {(
+            taxas.find((taxa) => taxa.categoria === selectedCategoria)?.[
+              restrictionType
+            ] ?? 0
+          ).toFixed(2)}
+          %
         </p>
 
         {/* Botões */}
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
           <button
             onClick={handleCalculate}
             style={{
-              padding: '10px 20px',
-              fontSize: '1em',
-              backgroundColor: '#007BFF',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              marginRight: '10px',
+              padding: "10px 20px",
+              fontSize: "1em",
+              backgroundColor: "#007BFF",
+              color: "#fff",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              marginRight: "10px",
             }}
           >
             Calcular
@@ -345,107 +406,140 @@ const SimuladorCredito: React.FC = () => {
           <button
             onClick={handleClear}
             style={{
-              padding: '10px 27px',
-              fontSize: '1em',
-              backgroundColor: '#DC3545',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
+              padding: "10px 27px",
+              fontSize: "1em",
+              backgroundColor: "#DC3545",
+              color: "#fff",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
             }}
           >
             Limpar
           </button>
           {errorMessage && (
-            <p style={{ color: 'red', marginTop: '10px' }}>{errorMessage}</p>
+            <p style={{ color: "red", marginTop: "10px" }}>{errorMessage}</p>
           )}
         </div>
 
-        <hr style={{ margin: '20px 0', border: '1px solid #ddd' }} />
+        <hr style={{ margin: "20px 0", border: "1px solid #ddd" }} />
 
         {/* Tabela de Amortização */}
-        {
-          (Number(installmentValue) > 0 && totalInterest > 0 && totalPaid > 0) && (
-            <>
-            <h2 style={{ margin: '20px 0' }}>Tabela de Amortização</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+        {Number(installmentValue) > 0 && totalInterest > 0 && totalPaid > 0 && (
+          <>
+            <h2 style={{ margin: "20px 0" }}>Tabela de Amortização</h2>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                marginBottom: "20px",
+              }}
+            >
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Parcela</th>
-                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data</th>
-                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Juros (R$)</th>
-                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Amortização (R$)</th>
-                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Saldo Devedor (R$)</th>
+                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    Parcela
+                  </th>
+                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    Data
+                  </th>
+                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    Juros (R$)
+                  </th>
+                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    Amortização (R$)
+                  </th>
+                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    Saldo Devedor (R$)
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {amortizationTable.map((row, index) => (
                   <tr key={index}>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.parcela}</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{paymentDates[index]}</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.juros}</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.amortizacao}</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.saldoDevedor}</td>
+                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      {row.parcela}
+                    </td>
+                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      {paymentDates[index]}
+                    </td>
+                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      {row.juros}
+                    </td>
+                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      {row.amortizacao}
+                    </td>
+                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      {row.saldoDevedor}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            </>
-          )
-        }
+          </>
+        )}
 
-
-       
-        <div style={{ textAlign: 'left', marginTop: '20px', marginLeft: '10px' }}>
-        {
-          (Number(installmentValue)) > 0 && 
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
-          <h1 style={{ fontSize: '1.2em' }}>
-            VALOR DA PARCELA: <strong>{numberToWords(Number(installmentValue))}</strong>
-          </h1>
-          <p>
-          ({numeroPorExtenso(Number(installmentValue))}).
-          </p>
-          </div>
-        }
-        {
-          calculationDone && (
+        <div
+          style={{ textAlign: "left", marginTop: "20px", marginLeft: "10px" }}
+        >
+          {Number(installmentValue) > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: "5px",
+              }}
+            >
+              <h1 style={{ fontSize: "1.2em" }}>
+                VALOR DA PARCELA:{" "}
+                <strong>{numberToWords(Number(installmentValue))}</strong>
+              </h1>
+              <p>({numeroPorExtenso(Number(installmentValue))}).</p>
+            </div>
+          )}
+          {calculationDone && (
             <p>
-            TOTAL DE PARCELAS: <strong>{payments}</strong> {payments > 1 ? 'meses' : 'mês'}.
+              TOTAL DE PARCELAS: <strong>{payments}</strong>{" "}
+              {payments > 1 ? "meses" : "mês"}.
             </p>
-          )
-        }
-        {
-          totalPaid > 0 && <p>VALOR TOTAL: <strong>{numberToWords(totalPaid)}</strong> ({numeroPorExtenso(totalPaid)}).</p>
-        }
-        {
-          totalInterest > 0 && <p>JUROS TOTAIS: <strong>{numberToWords(totalInterest)}</strong> ({numeroPorExtenso(totalInterest)}).</p>
-        }
-        
-        {
-          calculationDone && (
+          )}
+          {totalPaid > 0 && (
+            <p>
+              VALOR TOTAL: <strong>{numberToWords(totalPaid)}</strong> (
+              {numeroPorExtenso(totalPaid)}).
+            </p>
+          )}
+          {totalInterest > 0 && (
+            <p>
+              JUROS TOTAIS: <strong>{numberToWords(totalInterest)}</strong> (
+              {numeroPorExtenso(totalInterest)}).
+            </p>
+          )}
+
+          {calculationDone && (
             <p style={{ color: "green", marginTop: "10px" }}>
-              * Nenhum custo adicional (IOF, TAC ou seguros) está incluído no cálculo.
-            </p>  
-          )
-        } 
+              * Nenhum custo adicional (IOF, TAC ou seguros) está incluído no
+              cálculo.
+            </p>
+          )}
         </div>
 
         {calculationDone && (
           <button
             onClick={() => {
-              alert('Em construção..');
+              alert("Em construção..");
               // Aqui você pode integrar a lógica para navegar ou renderizar o novo componente.
             }}
             style={{
-              marginTop: '20px',
-              padding: '10px 20px',
-              fontSize: '1em',
-              backgroundColor: '#28a745',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
+              marginTop: "20px",
+              padding: "10px 20px",
+              fontSize: "1em",
+              backgroundColor: "#28a745",
+              color: "#fff",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
             }}
           >
             Configurar Contrato
