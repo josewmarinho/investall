@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NumericFormat } from 'react-number-format';
+import { numeroPorExtenso } from '../utils/numeroPorExtenso';
 
 interface Taxa {
   categoria: string;
@@ -26,8 +27,9 @@ const SimuladorCredito: React.FC = () => {
     const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
     return nextMonth.toISOString().split('T')[0];
   });
-  
+
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [calculationDone, setCalculationDone] = useState<boolean>(false);
 
   const calculateInstallmentValue = (PV: number, i: number, n: number) => {
     if (PV > 0 && i > 0 && n > 0) {
@@ -46,7 +48,7 @@ const SimuladorCredito: React.FC = () => {
   const calculateGracePeriod = () => {
     const today = new Date();
     const [year, month, day] = startDate.split('-').map(Number);
-    const adjustedDate = new Date(year, month - 2, day); // Subtrai 1 mês para efeito de cálculo
+    const adjustedDate = new Date(year, month - 2, day);
 
     const diffInMonths = Math.round(
       (adjustedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30)
@@ -85,39 +87,42 @@ const SimuladorCredito: React.FC = () => {
     } else {
       setErrorMessage('Por favor, preencha um dos campos para calcular.');
     }
+
+    setCalculationDone(true);
   };
 
   const handleClear = () => {
     setLoanAmount('');
     setInstallmentValue('');
     setErrorMessage('');
+    setPayments(1);
+    setCalculationDone(false);
   };
 
   const generateAmortizationTable = () => {
     const taxaSelecionada = taxas.find((taxa) => taxa.categoria === selectedCategoria);
     const interestRate = taxaSelecionada ? taxaSelecionada[restrictionType] / 100 : 0;
-  
+
     const gracePeriod = calculateGracePeriod();
     let saldoDevedor = Number(loanAmount);
-  
+
     if (gracePeriod > 0 && saldoDevedor > 0) {
       const jurosCarencia = saldoDevedor * (Math.pow(1 + interestRate, gracePeriod) - 1);
       saldoDevedor += jurosCarencia;
     }
-  
+
     const table = [];
     const parcelaFixa = calculateInstallmentValue(saldoDevedor, interestRate, payments);
-  
+
     for (let i = 0; i < payments; i++) {
       const juros = saldoDevedor * interestRate;
       const amortizacao = parcelaFixa - juros;
       saldoDevedor -= amortizacao;
-  
-      // Ajusta o saldo devedor para zero se ele estiver muito próximo de zero
+
       if (saldoDevedor < 0.01) {
         saldoDevedor = 0;
       }
-  
+
       table.push({
         parcela: i + 1,
         juros: juros.toFixed(2),
@@ -125,17 +130,17 @@ const SimuladorCredito: React.FC = () => {
         saldoDevedor: saldoDevedor.toFixed(2),
       });
     }
-  
+
     return table;
   };
-  
+
   const amortizationTable = generateAmortizationTable();
   const totalPaid = Number(installmentValue) * payments;
   const totalInterest = totalPaid - Number(loanAmount);
 
   const generateDates = () => {
     const [year, month, day] = startDate.split('-').map(Number);
-    const displayDate = new Date(year, month - 1, day); // Data mostrada na tabela é a inserida pelo usuário
+    const displayDate = new Date(year, month - 1, day);
 
     const dates = [];
     for (let i = 0; i < payments; i++) {
@@ -146,6 +151,10 @@ const SimuladorCredito: React.FC = () => {
   };
 
   const paymentDates = generateDates();
+
+  const numberToWords = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
 
   return (
     <div
@@ -168,6 +177,9 @@ const SimuladorCredito: React.FC = () => {
           padding: '20px',
           borderRadius: '10px',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          marginBottom: '100px',
+          marginTop: '30px',
+
         }}
       >
         <h1 style={{ marginBottom: '20px', color: '#000000', fontSize: '1.8em' }}>Simulação de Crédito</h1>
@@ -349,38 +361,96 @@ const SimuladorCredito: React.FC = () => {
           )}
         </div>
 
-        {/* Tabela de Amortização */}
-        <h2 style={{ margin: '20px 0' }}>Tabela de Amortização</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-          <thead>
-            <tr>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Parcela</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Juros (R$)</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Amortização (R$)</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Saldo Devedor (R$)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {amortizationTable.map((row, index) => (
-              <tr key={index}>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.parcela}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{paymentDates[index]}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.juros}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.amortizacao}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.saldoDevedor}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <hr style={{ margin: '20px 0', border: '1px solid #ddd' }} />
 
-        <div style={{ marginTop: '20px' }}>
-          <h2 style={{ fontSize: '1.5em' }}>
-            Pagamento Mensal: <strong>R$ {Number(installmentValue).toFixed(2)}</strong>
-          </h2>
-          <p>Tempo Total: <strong>{payments} meses</strong></p>
-          <p style={{ color: 'green' }}>Juros Totais: <strong>R$ {totalInterest.toFixed(2)}</strong></p>
+        {/* Tabela de Amortização */}
+        {
+          (Number(installmentValue) > 0 && totalInterest > 0 && totalPaid > 0) && (
+            <>
+            <h2 style={{ margin: '20px 0' }}>Tabela de Amortização</h2>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+              <thead>
+                <tr>
+                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Parcela</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Juros (R$)</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Amortização (R$)</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px' }}>Saldo Devedor (R$)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {amortizationTable.map((row, index) => (
+                  <tr key={index}>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.parcela}</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{paymentDates[index]}</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.juros}</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.amortizacao}</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{row.saldoDevedor}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </>
+          )
+        }
+
+
+       
+        <div style={{ textAlign: 'left', marginTop: '20px', marginLeft: '10px' }}>
+        {
+          (Number(installmentValue)) > 0 && 
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
+          <h1 style={{ fontSize: '1.2em' }}>
+            VALOR DA PARCELA: <strong>{numberToWords(Number(installmentValue))}</strong>
+          </h1>
+          <p>
+          ({numeroPorExtenso(Number(installmentValue))}).
+          </p>
+          </div>
+        }
+        {
+          calculationDone && (
+            <p>
+            TOTAL DE PARCELAS: <strong>{payments}</strong> {payments > 1 ? 'meses' : 'mês'}.
+            </p>
+          )
+        }
+        {
+          totalPaid > 0 && <p>VALOR TOTAL: <strong>{numberToWords(totalPaid)}</strong> ({numeroPorExtenso(totalPaid)}).</p>
+        }
+        {
+          totalInterest > 0 && <p>JUROS TOTAIS: <strong>{numberToWords(totalInterest)}</strong> ({numeroPorExtenso(totalInterest)}).</p>
+        }
+        
+        {
+          calculationDone && (
+            <p style={{ color: "green", marginTop: "10px" }}>
+              * Nenhum custo adicional (IOF, TAC ou seguros) está incluído no cálculo.
+            </p>  
+          )
+        } 
         </div>
+
+        {calculationDone && (
+          <button
+            onClick={() => {
+              alert('Em construção..');
+              // Aqui você pode integrar a lógica para navegar ou renderizar o novo componente.
+            }}
+            style={{
+              marginTop: '20px',
+              padding: '10px 20px',
+              fontSize: '1em',
+              backgroundColor: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            Configurar Contrato
+          </button>
+        )}
       </div>
     </div>
   );
