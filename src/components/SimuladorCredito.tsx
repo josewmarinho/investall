@@ -203,6 +203,41 @@ const SimuladorCredito: React.FC = () => {
     }).format(value);
   };
 
+  const handleCalculateRemainingPayments = () => {
+    setErrorMessage("");
+    const taxaSelecionada = taxas.find(
+      (taxa) => taxa.categoria === selectedCategoria
+    );
+    const interestRate = taxaSelecionada
+      ? taxaSelecionada[restrictionType] / 100
+      : 0;
+
+    const saldoDevedor = Number(loanAmount);
+    const PMT = Number(installmentValue);
+
+    if (!saldoDevedor || !PMT || !interestRate) {
+      setErrorMessage(
+        "Por favor, preencha o Valor do Empréstimo e o Valor da Prestação para calcular."
+      );
+      return;
+    }
+
+    if (PMT <= saldoDevedor * interestRate) {
+      setErrorMessage(
+        "O valor da prestação é insuficiente para cobrir os juros. Ajuste os valores."
+      );
+      return;
+    }
+
+    const remainingPayments = Math.ceil(
+      Math.log(PMT / (PMT - saldoDevedor * interestRate)) /
+        Math.log(1 + interestRate)
+    );
+
+    setPayments(remainingPayments); // Atualiza o estado de parcelas
+    setCalculationDone(true); // Marca como cálculo realizado
+  };
+
   return (
     <div
       style={{
@@ -307,7 +342,7 @@ const SimuladorCredito: React.FC = () => {
           <input
             type="range"
             min="1"
-            max="60"
+            max="100"
             value={payments}
             onChange={(e) => setPayments(Number(e.target.value))}
             style={{
@@ -417,6 +452,21 @@ const SimuladorCredito: React.FC = () => {
           >
             Limpar
           </button>
+          <button
+            onClick={handleCalculateRemainingPayments}
+            style={{
+              padding: "10px 20px",
+              fontSize: "1em",
+              backgroundColor: "#28a745",
+              color: "#fff",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              marginLeft: "10px",
+            }}
+          >
+            Parcelas Restantes
+          </button>
           {errorMessage && (
             <p style={{ color: "red", marginTop: "10px" }}>{errorMessage}</p>
           )}
@@ -425,64 +475,67 @@ const SimuladorCredito: React.FC = () => {
         <hr style={{ margin: "20px 0", border: "1px solid #ddd" }} />
 
         {/* Tabela de Amortização */}
-        {Number(installmentValue) > 0 && totalInterest > 0 && totalPaid > 0 && (
-          <>
-            <h2 style={{ margin: "20px 0" }}>Tabela de Amortização</h2>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                marginBottom: "20px",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    Parcela
-                  </th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    Data
-                  </th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    Juros (R$)
-                  </th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    Amortização (R$)
-                  </th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    Saldo Devedor (R$)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {amortizationTable.map((row, index) => (
-                  <tr key={index}>
-                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      {row.parcela}
-                    </td>
-                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      {paymentDates[index]}
-                    </td>
-                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      {row.juros}
-                    </td>
-                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      {row.amortizacao}
-                    </td>
-                    <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      {row.saldoDevedor}
-                    </td>
+        {Number(installmentValue) > 0 &&
+          totalInterest > 0 &&
+          totalPaid > 0 &&
+          calculationDone && (
+            <>
+              <h2 style={{ margin: "20px 0" }}>Tabela de Amortização</h2>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  marginBottom: "20px",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      Parcela
+                    </th>
+                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      Data
+                    </th>
+                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      Juros (R$)
+                    </th>
+                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      Amortização (R$)
+                    </th>
+                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                      Saldo Devedor (R$)
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
+                </thead>
+                <tbody>
+                  {amortizationTable.map((row, index) => (
+                    <tr key={index}>
+                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        {row.parcela}
+                      </td>
+                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        {paymentDates[index]}
+                      </td>
+                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        {row.juros}
+                      </td>
+                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        {row.amortizacao}
+                      </td>
+                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        {row.saldoDevedor}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
 
         <div
           style={{ textAlign: "left", marginTop: "20px", marginLeft: "10px" }}
         >
-          {Number(installmentValue) > 0 && (
+          {Number(installmentValue) > 0 && calculationDone && (
             <div
               style={{
                 display: "flex",
@@ -504,20 +557,20 @@ const SimuladorCredito: React.FC = () => {
               {payments > 1 ? "meses" : "mês"}.
             </p>
           )}
-          {totalPaid > 0 && (
+          {totalPaid > 0 && calculationDone && (
             <p>
               VALOR TOTAL: <strong>{numberToWords(totalPaid)}</strong> (
               {numeroPorExtenso(totalPaid)}).
             </p>
           )}
-          {totalInterest > 0 && (
+          {totalInterest > 0 && calculationDone && (
             <p>
               JUROS TOTAIS: <strong>{numberToWords(totalInterest)}</strong> (
               {numeroPorExtenso(totalInterest)}).
             </p>
           )}
 
-          {calculationDone && (
+          {calculationDone && calculationDone && (
             <p style={{ color: "green", marginTop: "10px" }}>
               * Nenhum custo adicional (IOF, TAC ou seguros) está incluído no
               cálculo.
