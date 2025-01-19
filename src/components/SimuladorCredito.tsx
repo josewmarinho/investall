@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NumericFormat } from "react-number-format";
 import { numeroPorExtenso } from "../utils/numeroPorExtenso";
+import EditorContrato from "./EditorContrato";
 
 interface Taxa {
   categoria: string;
@@ -54,6 +55,10 @@ const SimuladorCredito: React.FC = () => {
 
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [calculationDone, setCalculationDone] = useState<boolean>(false);
+
+  const [currentView, setCurrentView] = useState<"calculadora" | "editor">(
+    "calculadora"
+  );
 
   const calculateInstallmentValue = (PV: number, i: number, n: number) => {
     if (PV > 0 && i > 0 && n > 0) {
@@ -246,359 +251,378 @@ const SimuladorCredito: React.FC = () => {
         width: "100%",
         display: "flex",
         justifyContent: "center",
-        alignItems: "center",
         padding: "10px",
       }}
     >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "800px",
-          textAlign: "center",
-          background: "#fff",
-          padding: "20px",
-          borderRadius: "10px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-          marginBottom: "100px",
-          marginTop: "30px",
-        }}
-      >
-        <h1
-          style={{ marginBottom: "20px", color: "#000000", fontSize: "1.8em" }}
-        >
-          Simulação de Crédito
-        </h1>
-
-        {/* Data da Primeira Parcela */}
-        <div style={{ textAlign: "left", marginBottom: "15px" }}>
-          <label style={{ display: "block", marginBottom: "5px" }}>
-            <strong>Data da Primeira Parcela:</strong>
-          </label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={{ padding: "5px", width: "100%", maxWidth: "200px" }}
-          />
-        </div>
-
-        {/* Valor do Empréstimo */}
-        <div style={{ textAlign: "left", marginBottom: "15px" }}>
-          <label style={{ display: "block", marginBottom: "5px" }}>
-            <strong>Valor do Empréstimo (R$):</strong>
-          </label>
-          <NumericFormat
-            value={loanAmount}
-            onValueChange={(values) => setLoanAmount(values.value)}
-            placeholder="Valor do empréstimo"
-            thousandSeparator="."
-            decimalSeparator=","
-            prefix="R$ "
-            allowNegative={false}
-            valueIsNumericString
-            style={{
-              padding: "5px",
-              width: "100%",
-              maxWidth: "200px",
-              fontSize: "1em",
-              marginBottom: "10px",
-              marginTop: "5px",
-              borderRadius: "5px",
-            }}
-          />
-        </div>
-
-        {/* Valor da Prestação */}
-        <div style={{ textAlign: "left", marginBottom: "15px" }}>
-          <label style={{ display: "block", marginBottom: "5px" }}>
-            <strong>Valor da Prestação (R$):</strong>
-          </label>
-          <NumericFormat
-            value={installmentValue}
-            onValueChange={(values) => setInstallmentValue(values.value)}
-            placeholder="Valor da prestação"
-            thousandSeparator="."
-            decimalSeparator=","
-            prefix="R$ "
-            allowNegative={false}
-            valueIsNumericString
-            style={{
-              padding: "5px",
-              width: "100%",
-              maxWidth: "200px",
-              fontSize: "1em",
-              marginBottom: "10px",
-              marginTop: "5px",
-              borderRadius: "5px",
-            }}
-          />
-        </div>
-
-        {/* Número de Parcelas */}
-        <div style={{ textAlign: "left", marginBottom: "15px" }}>
-          <label style={{ display: "block", marginBottom: "5px" }}>
-            <strong>Número de Parcelas: {payments}</strong>
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="100"
-            value={payments}
-            onChange={(e) => setPayments(Number(e.target.value))}
-            style={{
-              width: "100%",
-              height: "10px",
-              background: "linear-gradient(to right, #61b3ff, #cceeff)",
-              borderRadius: "5px",
-              outline: "none",
-            }}
-          />
-        </div>
-
-        {/* Categoria */}
-        <div style={{ textAlign: "left", marginBottom: "15px" }}>
-          <label style={{ display: "block", marginBottom: "5px" }}>
-            <strong>Categoria:</strong>
-          </label>
-          <select
-            value={selectedCategoria}
-            onChange={(e) => setSelectedCategoria(e.target.value)}
-            style={{
-              padding: "5px",
-              width: "100%",
-              marginTop: "1px",
-              maxWidth: "300px",
-            }}
-          >
-            {taxas.map((taxa) => (
-              <option key={taxa.categoria} value={taxa.categoria}>
-                {taxa.categoria}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Tipo de Restrição */}
-        <div style={{ textAlign: "left", marginBottom: "20px" }}>
-          <strong>Tipo de Restrição:</strong>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              marginTop: "10px",
-            }}
-          >
-            <label>
-              <input
-                type="radio"
-                value="semRestricao"
-                checked={restrictionType === "semRestricao"}
-                onChange={() => setRestrictionType("semRestricao")}
-              />
-              Sem Restrição
-            </label>
-            <label>
-              <input
-                type="radio"
-                value="comRestricao"
-                checked={restrictionType === "comRestricao"}
-                onChange={() => setRestrictionType("comRestricao")}
-              />
-              Com Restrição
-            </label>
-          </div>
-        </div>
-
-        {/* Taxa Atual */}
-        <p style={{ textAlign: "left", marginBottom: "20px", fontSize: "1em" }}>
-          <strong>Taxa de Juros:</strong>{" "}
-          {(
-            taxas.find((taxa) => taxa.categoria === selectedCategoria)?.[
-              restrictionType
-            ] ?? 0
-          ).toFixed(2)}
-          %
-        </p>
-
-        {/* Botões */}
-        <div style={{ textAlign: "center", marginTop: "20px" }}>
-          <button
-            onClick={handleCalculate}
-            style={{
-              padding: "10px 20px",
-              fontSize: "1em",
-              backgroundColor: "#007BFF",
-              color: "#fff",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              marginRight: "10px",
-            }}
-          >
-            Calcular
-          </button>
-          <button
-            onClick={handleClear}
-            style={{
-              padding: "10px 27px",
-              fontSize: "1em",
-              backgroundColor: "#DC3545",
-              color: "#fff",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
-          >
-            Limpar
-          </button>
-          <button
-            onClick={handleCalculateRemainingPayments}
-            style={{
-              padding: "10px 20px",
-              fontSize: "1em",
-              backgroundColor: "#28a745",
-              color: "#fff",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              marginLeft: "10px",
-            }}
-          >
-            Parcelas Restantes
-          </button>
-          {errorMessage && (
-            <p style={{ color: "red", marginTop: "10px" }}>{errorMessage}</p>
-          )}
-        </div>
-
-        <hr style={{ margin: "20px 0", border: "1px solid #ddd" }} />
-
-        {/* Tabela de Amortização */}
-        {Number(installmentValue) > 0 &&
-          totalInterest > 0 &&
-          totalPaid > 0 &&
-          calculationDone && (
-            <>
-              <h2 style={{ margin: "20px 0" }}>Tabela de Amortização</h2>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  marginBottom: "20px",
-                }}
-              >
-                <thead>
-                  <tr>
-                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      Parcela
-                    </th>
-                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      Data
-                    </th>
-                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      Juros (R$)
-                    </th>
-                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      Amortização (R$)
-                    </th>
-                    <th style={{ border: "1px solid #ddd", padding: "8px" }}>
-                      Saldo Devedor (R$)
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {amortizationTable.map((row, index) => (
-                    <tr key={index}>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                        {row.parcela}
-                      </td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                        {paymentDates[index]}
-                      </td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                        {row.juros}
-                      </td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                        {row.amortizacao}
-                      </td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                        {row.saldoDevedor}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
-
+      {currentView === "calculadora" && (
         <div
-          style={{ textAlign: "left", marginTop: "20px", marginLeft: "10px" }}
+          style={{
+            width: "100%",
+            maxWidth: "800px",
+            textAlign: "center",
+            background: "#fff",
+            padding: "20px",
+            borderRadius: "10px",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            marginBottom: "100px",
+            marginTop: "30px",
+          }}
         >
-          {Number(installmentValue) > 0 && calculationDone && (
+          <h1
+            style={{
+              marginBottom: "20px",
+              color: "#000000",
+              fontSize: "1.8em",
+            }}
+          >
+            Simulação de Crédito
+          </h1>
+
+          {/* Data da Primeira Parcela */}
+          <div style={{ textAlign: "left", marginBottom: "15px" }}>
+            <label style={{ display: "block", marginBottom: "5px" }}>
+              <strong>Data da Primeira Parcela:</strong>
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ padding: "5px", width: "100%", maxWidth: "200px" }}
+            />
+          </div>
+
+          {/* Valor do Empréstimo */}
+          <div style={{ textAlign: "left", marginBottom: "15px" }}>
+            <label style={{ display: "block", marginBottom: "5px" }}>
+              <strong>Valor do Empréstimo (R$):</strong>
+            </label>
+            <NumericFormat
+              value={loanAmount}
+              onValueChange={(values) => setLoanAmount(values.value)}
+              placeholder="Valor do empréstimo"
+              thousandSeparator="."
+              decimalSeparator=","
+              prefix="R$ "
+              allowNegative={false}
+              valueIsNumericString
+              style={{
+                padding: "5px",
+                width: "100%",
+                maxWidth: "200px",
+                fontSize: "1em",
+                marginBottom: "10px",
+                marginTop: "5px",
+                borderRadius: "5px",
+              }}
+            />
+          </div>
+
+          {/* Valor da Prestação */}
+          <div style={{ textAlign: "left", marginBottom: "15px" }}>
+            <label style={{ display: "block", marginBottom: "5px" }}>
+              <strong>Valor da Prestação (R$):</strong>
+            </label>
+            <NumericFormat
+              value={installmentValue}
+              onValueChange={(values) => setInstallmentValue(values.value)}
+              placeholder="Valor da prestação"
+              thousandSeparator="."
+              decimalSeparator=","
+              prefix="R$ "
+              allowNegative={false}
+              valueIsNumericString
+              style={{
+                padding: "5px",
+                width: "100%",
+                maxWidth: "200px",
+                fontSize: "1em",
+                marginBottom: "10px",
+                marginTop: "5px",
+                borderRadius: "5px",
+              }}
+            />
+          </div>
+
+          {/* Número de Parcelas */}
+          <div style={{ textAlign: "left", marginBottom: "15px" }}>
+            <label style={{ display: "block", marginBottom: "5px" }}>
+              <strong>Número de Parcelas: {payments}</strong>
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              value={payments}
+              onChange={(e) => setPayments(Number(e.target.value))}
+              style={{
+                width: "100%",
+                height: "10px",
+                background: "linear-gradient(to right, #61b3ff, #cceeff)",
+                borderRadius: "5px",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          {/* Categoria */}
+          <div style={{ textAlign: "left", marginBottom: "15px" }}>
+            <label style={{ display: "block", marginBottom: "5px" }}>
+              <strong>Categoria:</strong>
+            </label>
+            <select
+              value={selectedCategoria}
+              onChange={(e) => setSelectedCategoria(e.target.value)}
+              style={{
+                padding: "5px",
+                width: "100%",
+                marginTop: "1px",
+                maxWidth: "300px",
+              }}
+            >
+              {taxas.map((taxa) => (
+                <option key={taxa.categoria} value={taxa.categoria}>
+                  {taxa.categoria}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tipo de Restrição */}
+          <div style={{ textAlign: "left", marginBottom: "20px" }}>
+            <strong>Tipo de Restrição:</strong>
             <div
               style={{
                 display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: "5px",
+                flexDirection: "column",
+                gap: "10px",
+                marginTop: "10px",
               }}
             >
-              <h1 style={{ fontSize: "1.2em" }}>
-                VALOR DA PARCELA:{" "}
-                <strong>{numberToWords(Number(installmentValue))}</strong>
-              </h1>
-              <p>({numeroPorExtenso(Number(installmentValue))}).</p>
+              <label>
+                <input
+                  type="radio"
+                  value="semRestricao"
+                  checked={restrictionType === "semRestricao"}
+                  onChange={() => setRestrictionType("semRestricao")}
+                />
+                Sem Restrição
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  value="comRestricao"
+                  checked={restrictionType === "comRestricao"}
+                  onChange={() => setRestrictionType("comRestricao")}
+                />
+                Com Restrição
+              </label>
             </div>
-          )}
-          {calculationDone && (
-            <p>
-              TOTAL DE PARCELAS: <strong>{payments}</strong>{" "}
-              {payments > 1 ? "meses" : "mês"}.
-            </p>
-          )}
-          {totalPaid > 0 && calculationDone && (
-            <p>
-              VALOR TOTAL: <strong>{numberToWords(totalPaid)}</strong> (
-              {numeroPorExtenso(totalPaid)}).
-            </p>
-          )}
-          {totalInterest > 0 && calculationDone && (
-            <p>
-              JUROS TOTAIS: <strong>{numberToWords(totalInterest)}</strong> (
-              {numeroPorExtenso(totalInterest)}).
-            </p>
-          )}
+          </div>
 
-          {calculationDone && calculationDone && (
-            <p style={{ color: "green", marginTop: "10px" }}>
-              * Nenhum custo adicional (IOF, TAC ou seguros) está incluído no
-              cálculo.
-            </p>
+          {/* Taxa Atual */}
+          <p
+            style={{ textAlign: "left", marginBottom: "20px", fontSize: "1em" }}
+          >
+            <strong>Taxa de Juros:</strong>{" "}
+            {(
+              taxas.find((taxa) => taxa.categoria === selectedCategoria)?.[
+                restrictionType
+              ] ?? 0
+            ).toFixed(2)}
+            %
+          </p>
+
+          {/* Botões */}
+          <div style={{ textAlign: "center", marginTop: "20px" }}>
+            <button
+              onClick={handleCalculate}
+              style={{
+                padding: "10px 20px",
+                fontSize: "1em",
+                backgroundColor: "#007BFF",
+                color: "#fff",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+                marginRight: "10px",
+              }}
+            >
+              Calcular
+            </button>
+            <button
+              onClick={handleClear}
+              style={{
+                padding: "10px 27px",
+                fontSize: "1em",
+                backgroundColor: "#DC3545",
+                color: "#fff",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            >
+              Limpar
+            </button>
+            <button
+              onClick={handleCalculateRemainingPayments}
+              style={{
+                padding: "10px 20px",
+                fontSize: "1em",
+                backgroundColor: "#28a745",
+                color: "#fff",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+                marginLeft: "10px",
+              }}
+            >
+              Parcelas Restantes
+            </button>
+            {errorMessage && (
+              <p style={{ color: "red", marginTop: "10px" }}>{errorMessage}</p>
+            )}
+          </div>
+
+          <hr style={{ margin: "20px 0", border: "1px solid #ddd" }} />
+
+          {/* Tabela de Amortização */}
+          {Number(installmentValue) > 0 &&
+            totalInterest > 0 &&
+            totalPaid > 0 &&
+            calculationDone && (
+              <>
+                <h2 style={{ margin: "20px 0" }}>Tabela de Amortização</h2>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        Parcela
+                      </th>
+                      <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        Data
+                      </th>
+                      <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        Juros (R$)
+                      </th>
+                      <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        Amortização (R$)
+                      </th>
+                      <th style={{ border: "1px solid #ddd", padding: "8px" }}>
+                        Saldo Devedor (R$)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {amortizationTable.map((row, index) => (
+                      <tr key={index}>
+                        <td
+                          style={{ border: "1px solid #ddd", padding: "8px" }}
+                        >
+                          {row.parcela}
+                        </td>
+                        <td
+                          style={{ border: "1px solid #ddd", padding: "8px" }}
+                        >
+                          {paymentDates[index]}
+                        </td>
+                        <td
+                          style={{ border: "1px solid #ddd", padding: "8px" }}
+                        >
+                          {row.juros}
+                        </td>
+                        <td
+                          style={{ border: "1px solid #ddd", padding: "8px" }}
+                        >
+                          {row.amortizacao}
+                        </td>
+                        <td
+                          style={{ border: "1px solid #ddd", padding: "8px" }}
+                        >
+                          {row.saldoDevedor}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+          <div
+            style={{ textAlign: "left", marginTop: "20px", marginLeft: "10px" }}
+          >
+            {Number(installmentValue) > 0 && calculationDone && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: "5px",
+                }}
+              >
+                <h1 style={{ fontSize: "1.2em" }}>
+                  VALOR DA PARCELA:{" "}
+                  <strong>{numberToWords(Number(installmentValue))}</strong>
+                </h1>
+                <p>({numeroPorExtenso(Number(installmentValue))}).</p>
+              </div>
+            )}
+            {calculationDone && (
+              <p>
+                TOTAL DE PARCELAS: <strong>{payments}</strong>{" "}
+                {payments > 1 ? "meses" : "mês"}.
+              </p>
+            )}
+            {totalPaid > 0 && calculationDone && (
+              <p>
+                VALOR TOTAL: <strong>{numberToWords(totalPaid)}</strong> (
+                {numeroPorExtenso(totalPaid)}).
+              </p>
+            )}
+            {totalInterest > 0 && calculationDone && (
+              <p>
+                JUROS TOTAIS: <strong>{numberToWords(totalInterest)}</strong> (
+                {numeroPorExtenso(totalInterest)}).
+              </p>
+            )}
+
+            {calculationDone && calculationDone && (
+              <p style={{ color: "green", marginTop: "10px" }}>
+                * Nenhum custo adicional (IOF, TAC ou seguros) está incluído no
+                cálculo.
+              </p>
+            )}
+          </div>
+
+          {calculationDone && (
+            <button
+              onClick={() => {
+                setCurrentView("editor");
+              }}
+              style={{
+                marginTop: "20px",
+                padding: "10px 20px",
+                fontSize: "1em",
+                backgroundColor: "#28a745",
+                color: "#fff",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            >
+              Configurar Contrato
+            </button>
           )}
         </div>
-
-        {calculationDone && (
-          <button
-            onClick={() => {
-              alert("Em construção..");
-              // Aqui você pode integrar a lógica para navegar ou renderizar o novo componente.
-            }}
-            style={{
-              marginTop: "20px",
-              padding: "10px 20px",
-              fontSize: "1em",
-              backgroundColor: "#28a745",
-              color: "#fff",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
-          >
-            Configurar Contrato
-          </button>
-        )}
-      </div>
+      )}
+      {currentView === "editor" && (
+        <EditorContrato voltar={() => setCurrentView("calculadora")} />
+      )}
     </div>
   );
 };
