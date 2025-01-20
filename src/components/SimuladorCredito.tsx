@@ -246,7 +246,7 @@ const SimuladorCredito: React.FC = () => {
     setCalculationDone(true); // Marca como cálculo realizado
   };
 
-  const parcelasCalculadas = amortizationTable.map((row, index) => ({
+  const parcelasCalculadas = amortizationTable.map((_, index) => ({
     data: paymentDates[index], // Pega a data de pagamento
     valor: numberToWords(Number(installmentValue)), // Pega o valor da amortização
   }));
