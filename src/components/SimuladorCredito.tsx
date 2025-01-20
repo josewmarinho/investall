@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { NumericFormat } from "react-number-format";
 import { numeroPorExtenso } from "../utils/numeroPorExtenso";
 import EditorContrato from "./EditorContrato";
+import { useTaxa } from "../hook/useTaxa";
 
 interface Taxa {
   categoria: string;
@@ -59,6 +60,8 @@ const SimuladorCredito: React.FC = () => {
   const [currentView, setCurrentView] = useState<"calculadora" | "editor">(
     "calculadora"
   );
+  const taxaAtual = useTaxa(taxas, selectedCategoria, restrictionType);
+  
 
   const calculateInstallmentValue = (PV: number, i: number, n: number) => {
     if (PV > 0 && i > 0 && n > 0) {
@@ -243,6 +246,22 @@ const SimuladorCredito: React.FC = () => {
     setCalculationDone(true); // Marca como cálculo realizado
   };
 
+  const parcelasCalculadas = amortizationTable.map((row, index) => ({
+    data: paymentDates[index], // Pega a data de pagamento
+    valor: numberToWords(Number(installmentValue)), // Pega o valor da amortização
+  }));
+
+
+
+  const sendDataToContrat = {
+    emprestimo: loanAmount,
+    totalApagar: numberToWords(totalPaid),
+    totalApagarTexto: numeroPorExtenso(totalPaid),
+    juros: `${taxaAtual}%`,
+    numeroParcelas: payments,
+
+  }
+
   return (
     <div
       style={{
@@ -424,11 +443,7 @@ const SimuladorCredito: React.FC = () => {
             style={{ textAlign: "left", marginBottom: "20px", fontSize: "1em" }}
           >
             <strong>Taxa de Juros:</strong>{" "}
-            {(
-              taxas.find((taxa) => taxa.categoria === selectedCategoria)?.[
-                restrictionType
-              ] ?? 0
-            ).toFixed(2)}
+            {taxaAtual}
             %
           </p>
 
@@ -621,7 +636,11 @@ const SimuladorCredito: React.FC = () => {
         </div>
       )}
       {currentView === "editor" && (
-        <EditorContrato voltar={() => setCurrentView("calculadora")} />
+        <EditorContrato 
+          voltar={() => setCurrentView("calculadora")} 
+          parcelasCalculadas={parcelasCalculadas}
+          dados={sendDataToContrat}
+        />
       )}
     </div>
   );

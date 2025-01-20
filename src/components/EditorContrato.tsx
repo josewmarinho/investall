@@ -1,61 +1,198 @@
 import React, { useState } from "react";
+import PizZip from "pizzip";
+import Docxtemplater from "docxtemplater";
+import { saveAs } from "file-saver";
 import { IoArrowBackOutline } from "react-icons/io5";
+import { generateTable } from "../utils/generateTable";
 
-const contratos: { principal: string; aditivo: string } = {
-  principal: `CONTRATO PRINCIPAL – N. 02:
+// Dados do condomínio
+interface DadosCondominio {
+  condominio: string;
+  cnpj: string;
+  rua: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+}
 
-O presente instrumento corresponde ao Contrato-Principal...`,
-  aditivo: `CONTRATO SECUNDÁRIO – TERMO ADITIVO N.03, AO CONTRATO PRINCIPAL N. 01:
+// Dados do contratante-devedor
+interface DadosContratante {
+  contratante: string;
+  nacionalidade: string;
+  profissao: string;
+  admissao: string;
+  cpf: string;
+  rg: string;
+  orgao: string;
+  rua: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+}
 
-O presente Contrato Secundário, doravante denominado de TERMO ADITIVO...`,
-};
+interface Parcela {
+  data: string;
+  valor: string;
+}
 
 interface EditorContratoProps {
   voltar: () => void;
+  parcelasCalculadas: Parcela[];
+  dados: {
+    emprestimo: string;
+    totalApagar: string;
+    juros: string;
+    numeroParcelas: number;
+    totalApagarTexto: string;
+  }
 }
 
-const EditorContrato: React.FC<EditorContratoProps> = ({ voltar }) => {
-  const [tipoContrato, setTipoContrato] =
-    useState<keyof typeof contratos>("principal");
-  const [dadosContrato, setDadosContrato] = useState({
-    contratante: "",
+const EditorContrato: React.FC<EditorContratoProps> = ({
+  voltar,
+  parcelasCalculadas,
+  dados,
+}) => {
+  const [tipoContrato, setTipoContrato] = useState<"principal" | "aditivo">(
+    "principal"
+  );
+  // Estado para dados do condomínio
+  const [dadosCondominio, setDadosCondominio] = useState<DadosCondominio>({
+    condominio: "",
     cnpj: "",
-    endereco: "",
+    rua: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
     cidade: "",
     estado: "",
     cep: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Estado para dados do contratante-devedor
+  const [dadosContratante, setDadosContratante] = useState<DadosContratante>({
+    contratante: "",
+    nacionalidade: "",
+    profissao: "",
+    admissao: "",
+    cpf: "",
+    rg: "",
+    orgao: "",
+    rua: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+    cep: "",
+  });
+
+  const tabelaCondicoes = generateTable(parcelasCalculadas);
+
+  // Função para atualizar os dados do condomínio
+  const handleChangeCondominio = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setDadosContrato({ ...dadosContrato, [name]: value });
+    setDadosCondominio({ ...dadosCondominio, [name]: value });
   };
 
-  const gerarContrato = (): string => {
-    let textoContrato = contratos[tipoContrato];
-
-    textoContrato = textoContrato
-      .replace(/CONTRATANTE:.*/i, `CONTRATANTE: ${dadosContrato.contratante}`)
-      .replace(/C.N.P.J. n.*/i, `C.N.P.J. n° ${dadosContrato.cnpj}`)
-      .replace(/com sede na .*,/i, `com sede na ${dadosContrato.endereco},`)
-      .replace(
-        /Teresina PI,/i,
-        `${dadosContrato.cidade} ${dadosContrato.estado},`
-      )
-      .replace(/Cep \\d{5}-\\d{3}/i, `Cep ${dadosContrato.cep}`);
-
-    return textoContrato;
+  // Função para atualizar os dados do contratante-devedor
+  const handleChangeContratante = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDadosContratante({ ...dadosContratante, [name]: value });
   };
 
-  const downloadContrato = () => {
-    const textoContrato = gerarContrato();
-    const blob = new Blob([textoContrato], { type: "text/plain" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Contrato-${tipoContrato}.txt`;
-    link.click();
-  };
 
+ // Function to generate the contract
+const gerarContrato = async () => {
+  try {
+
+    // Define o modelo com base no tipo de contrato
+    const modelo =
+    tipoContrato === "aditivo"
+      ? "/modelos/contrato_aditivo.docx"
+      : "/modelos/contrato_principal.docx";
+
+    // Fetch the .docx template
+    const response = await fetch(modelo);
+    const arrayBuffer = await response.arrayBuffer();
+    const zip = new PizZip(arrayBuffer);
+
+    // Initialize Docxtemplater with options
+    const doc = new Docxtemplater(zip, {
+      linebreaks: true, // Support line breaks
+      paragraphLoop: true,
+      
+    });
+
+    // Prepare the data to be rendered
+    const data = {
+      // Dados do condomínio
+      nomeCondominio: dadosCondominio.condominio,
+      cnpjCondominio: dadosCondominio.cnpj,
+      ruaCondominio: dadosCondominio.rua,
+      numeroCondominio: dadosCondominio.numero,
+      complementoCondominio: dadosCondominio.complemento || "",
+      bairroCondominio: dadosCondominio.bairro,
+      cidadeCondominio: dadosCondominio.cidade,
+      estadoCondominio: dadosCondominio.estado,
+      cepCondominio: dadosCondominio.cep,
+
+      // Dados do contratante
+      nomeContratante: dadosContratante.contratante,
+      nacionalidadeContratante: dadosContratante.nacionalidade,
+      profissaoContratante: dadosContratante.profissao,
+      admissaoContratante: dadosContratante.admissao,
+      cpfContratante: dadosContratante.cpf,
+      rgContratante: dadosContratante.rg,
+      orgaoContratante: dadosContratante.orgao,
+      ruaContratante: dadosContratante.rua,
+      numeroContratante: dadosContratante.numero,
+      complementoContratante: dadosContratante.complemento || "",
+      bairroContratante: dadosContratante.bairro,
+      cidadeContratante: dadosContratante.cidade,
+      estadoContratante: dadosContratante.estado,
+      cepContratante: dadosContratante.cep,
+
+      // Tabela de condições
+      tabelaCondicoes: tabelaCondicoes,
+
+      credito: dados.emprestimo,
+      totalOperacao: dados.totalApagar,
+      totalOperacaoTexto: dados.totalApagarTexto,
+      totalParcelas: dados.numeroParcelas,
+      taxaJuros: dados.juros,
+    };
+
+    // Render the document with the data
+    await doc.renderAsync(data);
+
+    // Generate the final document
+    const blob = doc.getZip().generate({
+      type: "blob",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+
+    // Save the file
+    saveAs(
+      blob,
+      `Contrato ${
+        tipoContrato === "principal"
+          ? `${tipoContrato} ${dadosCondominio.condominio}`
+          : `${tipoContrato} ${dadosContratante.contratante}`
+      }.docx`
+    );
+    console.log("Arquivo gerado com sucesso!");
+  } catch (error) {
+    console.error("Erro ao gerar contrato:", error);
+  }
+};
+  
   return (
     <main
       style={{
@@ -73,7 +210,7 @@ const EditorContrato: React.FC<EditorContratoProps> = ({ voltar }) => {
         style={{
           display: "flex",
           alignItems: "center",
-          flexDirection: "row",
+          marginBottom: "20px",
         }}
       >
         <button
@@ -88,87 +225,89 @@ const EditorContrato: React.FC<EditorContratoProps> = ({ voltar }) => {
         >
           <IoArrowBackOutline />
         </button>
-        <div style={{ flex: 1, marginRight: "50px" }}>
-          <h2>Configurar Contrato</h2>
-        </div>
+        <h2 style={{ textAlign: "center", marginLeft: 10, fontSize:36 }}>Configurar Contrato</h2>
       </div>
 
-      {/* Seleção de tipo de contrato */}
-      <div style={{ textAlign: "left", marginBottom: "20px" }}>
-        <label>
-          <strong>Tipo de Contrato:</strong>
+      {/* Seleção do tipo de contrato */}
+      <div style={{ textAlign: "left", marginBottom: "20px", padding: "10px", }}>
+      <label >
+          <strong style={{fontSize: 24, textAlign: "left"}}>Tipo de Contrato:</strong>
         </label>
         <select
           value={tipoContrato}
           onChange={(e) =>
-            setTipoContrato(e.target.value as keyof typeof contratos)
+            setTipoContrato(e.target.value as "principal" | "aditivo")
           }
-          style={{ padding: "10px", width: "100%", maxWidth: "300px" }}
+          style={{
+            width: "100%",
+            padding: "10px",
+            margin: "10px 0",
+            borderRadius: 10
+          }}
         >
-          <option value="principal">Contrato Principal</option>
-          <option value="aditivo">Contrato Aditivo</option>
+          <option value="principal">Principal</option>
+          <option value="aditivo">Aditivo</option>
         </select>
       </div>
 
-      {/* Inputs para dados do contrato */}
-      <div style={{ textAlign: "left", marginBottom: "20px" }}>
+       {/* Formulário para dados do condomínio */}
+       <div style={{ textAlign: "left", marginBottom: "20px", padding: "10px", }}>
         <label>
-          <strong>Dados da Parte Contratante:</strong>
+          <strong>Dados do Condomínio:</strong>
         </label>
-        <div>
-          <input
-            type="text"
-            name="contratante"
-            value={dadosContrato.contratante}
-            onChange={handleChange}
-            placeholder="Nome do Contratante"
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          />
-          <input
-            type="text"
-            name="cnpj"
-            value={dadosContrato.cnpj}
-            onChange={handleChange}
-            placeholder="CNPJ"
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          />
-          <input
-            type="text"
-            name="endereco"
-            value={dadosContrato.endereco}
-            onChange={handleChange}
-            placeholder="Endereço"
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          />
-          <input
-            type="text"
-            name="cidade"
-            value={dadosContrato.cidade}
-            onChange={handleChange}
-            placeholder="Cidade"
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          />
-          <input
-            type="text"
-            name="estado"
-            value={dadosContrato.estado}
-            onChange={handleChange}
-            placeholder="Estado"
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          />
-          <input
-            type="text"
-            name="cep"
-            value={dadosContrato.cep}
-            onChange={handleChange}
-            placeholder="CEP"
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          />
+        <div style={{marginTop: 12, marginRight: 16}}>
+          {Object.keys(dadosCondominio).map((campo) => (
+            <input
+              key={campo}
+              type="text"
+              name={campo}
+              value={dadosCondominio[campo as keyof DadosCondominio] || ""}
+              onChange={handleChangeCondominio}
+              placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                marginBottom: "10px",
+                border: "0.5px solid #ccc",
+                borderRadius: 10
+              }}
+            />
+          ))}
         </div>
       </div>
 
+      {tipoContrato === "aditivo" && (
+  <>
+  {/* Formulário para dados do contratante */}
+  <div style={{ textAlign: "left", marginBottom: "20px", padding: "10px" }}>
+          <label>
+            <strong>Dados do Contratante Devedor:</strong>
+          </label>
+          <div style={{marginTop: 12, marginRight: 16}}>
+            {Object.keys(dadosContratante).map((campo) => (
+              <input
+                key={campo}
+                type="text"
+                name={campo}
+                value={dadosContratante[campo as keyof DadosContratante] || ""}
+                onChange={handleChangeContratante}
+                placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  marginBottom: "10px",
+                  border: "0.5px solid #ccc",
+                  borderRadius: 10
+                }}
+              />
+            ))}
+          </div>
+        </div></>
+        )}
+
+      {/* Botão para gerar o contrato */}
       <button
-        onClick={downloadContrato}
+        onClick={gerarContrato}
         style={{
           padding: "10px 20px",
           fontSize: "1em",
