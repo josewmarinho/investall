@@ -1,6 +1,10 @@
 interface Parcela {
     data: string;
     valor: string;
+    amortizacao: string;
+    saldo_devedor: string;
+    juros: string;
+
   }
   
   /**
@@ -11,7 +15,7 @@ interface Parcela {
   export const generateTable = (
     parcelasCalculadas: Parcela[],
   ): string => {
-    return `${parcelasCalculadas.map((parcela, index) => `${index + 1}ª Parcela: ${parcela.data} -> R$ ${parcela.valor} \n`).join('')}`;
+    return `${parcelasCalculadas.map((parcela, index) => `${index + 1}ª : ${parcela.data} - ${parcela.saldo_devedor} - ${parcela.amortizacao} - ${parcela.juros} - ${parcela.valor} \n`).join('')}`;
   };
   
   

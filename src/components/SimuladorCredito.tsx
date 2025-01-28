@@ -246,19 +246,45 @@ const SimuladorCredito: React.FC = () => {
     setCalculationDone(true); // Marca como cálculo realizado
   };
 
-  const parcelasCalculadas = amortizationTable.map((_, index) => ({
+  const parcelasCalculadas = amortizationTable.map((parcela, index) => ({
     data: paymentDates[index], // Pega a data de pagamento
-    valor: numberToWords(Number(installmentValue)), // Pega o valor da amortização
+    valor: installmentValue, //Valor da parcela
+    saldo_devedor: parcela.saldoDevedor,
+    amortizacao: parcela.amortizacao,
+    juros: parcela.juros,
   }));
 
 
 
+  const calcularIOF = (valorLiquido: number , numeroParcelas: number) => {
+    const prazoDias = numeroParcelas * 30; // Prazo total em dias
+    const taxaFixa = 0.0038; // Taxa fixa de 0,38%
+    const taxaDiaria = 0.000082; // Taxa diária de 0,0082%
+  
+
+    const iofFixo = valorLiquido * taxaFixa;
+    const iofDiario = valorLiquido * (taxaDiaria * prazoDias);
+    const iofTotal = iofFixo + iofDiario;
+
+    const valorBruto = valorLiquido + 400 + iofTotal;
+
+    return {
+      valorBruto: valorBruto.toFixed(2),
+      iofTotal: iofTotal.toFixed(2),
+    };
+  };
+
+  const IOFvalue = calcularIOF(Number(loanAmount), payments).iofTotal
+  const valorCredito = numberToWords(Number(loanAmount) + 400 + Number(IOFvalue));
+
   const sendDataToContrat = {
     emprestimo: loanAmount,
-    totalApagar: numberToWords(totalPaid),
-    totalApagarTexto: numeroPorExtenso(totalPaid),
+    valorCredito: valorCredito,
+    totalApagar: numberToWords(totalPaid + 400),
+    totalApagarTexto: numeroPorExtenso(totalPaid + 400),
     juros: `${taxaAtual}%`,
     numeroParcelas: payments,
+    iof: IOFvalue,
 
   }
 
@@ -587,6 +613,18 @@ const SimuladorCredito: React.FC = () => {
                 <p>({numeroPorExtenso(Number(installmentValue))}).</p>
               </div>
             )}
+              {totalInterest > 0 && calculationDone && (
+              <p>
+                VALOR IOF: <strong>{numberToWords(Number(IOFvalue))}</strong> (
+                {numeroPorExtenso((Number(IOFvalue)))}).
+              </p>
+            )}
+            {totalInterest > 0 && calculationDone && (
+              <p>
+                CUSTO DE EMISSÃO: <strong>{numberToWords(400)}</strong> (
+                {numeroPorExtenso(400)}).
+              </p>
+            )}
             {calculationDone && (
               <p>
                 TOTAL DE PARCELAS: <strong>{payments}</strong>{" "}
@@ -595,8 +633,8 @@ const SimuladorCredito: React.FC = () => {
             )}
             {totalPaid > 0 && calculationDone && (
               <p>
-                VALOR TOTAL: <strong>{numberToWords(totalPaid)}</strong> (
-                {numeroPorExtenso(totalPaid)}).
+                VALOR TOTAL: <strong>{numberToWords(totalPaid + 400 + Number(IOFvalue))}</strong> (
+                {numeroPorExtenso(totalPaid + 400 + Number(IOFvalue))}).
               </p>
             )}
             {totalInterest > 0 && calculationDone && (
@@ -606,12 +644,9 @@ const SimuladorCredito: React.FC = () => {
               </p>
             )}
 
-            {calculationDone && calculationDone && (
-              <p style={{ color: "green", marginTop: "10px" }}>
-                * Nenhum custo adicional (IOF, TAC ou seguros) está incluído no
-                cálculo.
-              </p>
-            )}
+          
+  
+  
           </div>
 
           {calculationDone && (
